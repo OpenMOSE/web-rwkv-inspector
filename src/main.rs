@@ -208,19 +208,32 @@ impl Ui {
 struct App {
     rx: flume::Receiver<(BoxUi, Weak<()>)>,
     ui: Vec<(BoxUi, Weak<()>)>,
+    fonts_configured: bool,  // Added font set flag
 }
 
 impl App {
     fn new() -> (Self, Ui) {
         let (tx, rx) = flume::unbounded();
         let ui = vec![];
-        let app = Self { rx, ui };
+        //let app = Self { rx, ui };
+        let app = Self { rx, ui, fonts_configured: false };  // default false
         (app, Ui(tx))
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        if !self.fonts_configured {
+            // Font Setting
+            let mut fonts = egui::FontDefinitions::default();
+            let font_data = include_bytes!("default.ttf").to_vec();
+            fonts.font_data.insert("custom_font".to_owned(), egui::FontData::from_owned(font_data));
+            fonts.families.get_mut(&egui::FontFamily::Proportional).unwrap().insert(0, "custom_font".to_owned());
+            fonts.families.get_mut(&egui::FontFamily::Monospace).unwrap().insert(0, "custom_font".to_owned());
+
+            ctx.set_fonts(fonts);
+            self.fonts_configured = true;  // Set the font set flag to true
+        }
         while let Ok(ui) = self.rx.try_recv() {
             self.ui.push(ui);
         }
